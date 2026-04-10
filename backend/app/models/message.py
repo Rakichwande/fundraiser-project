@@ -1,14 +1,14 @@
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, DateTime
 from app.database import Base
-import uuid
+from datetime import datetime
 
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    member_id = Column(String)
-    member_name = Column(String)
-    message_content = Column(String)
-    channel = Column(String)
-    status = Column(String)
-    created_date = Column(String)
+    id = Column(String, primary_key=True, index=True)
+    member_id = Column(String, nullable=False)
+    member_name = Column(String, nullable=False)
+    message_content = Column(String, nullable=False)
+    channel = Column(String, default="whatsapp")
+    status = Column(String, default="sent")
+    created_date = Column(DateTime, default=datetime.utcnow)

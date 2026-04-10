@@ -25,7 +25,7 @@ export default function PaymentFormDialog({
     notes: "",
   });
 
-  // 🔹 Preselect member if provided
+  // 🔹 Preselect member
   useEffect(() => {
     if (preselectedMemberId) {
       setForm((prev) => ({
@@ -51,46 +51,30 @@ export default function PaymentFormDialog({
 
       if (isNaN(amount) || amount <= 0) {
         alert("Please enter a valid amount");
-        setSaving(false);
         return;
       }
 
-      // 1️⃣ CREATE PAYMENT
-      const paymentRes = await API.post("/payments", {
+      // ✅ ONLY CREATE PAYMENT (Backend handles totals)
+      const res = await API.post("/payments", {
         member_id: form.member_id,
         member_name: member?.name,
         amount,
         method: form.method,
         reference: form.reference,
         notes: form.notes,
-        payment_date: new Date().toISOString(),
-      });
-      const newPayment = paymentRes.data;
-
-      // 2️⃣ UPDATE MEMBER TOTAL AND STATUS
-      const newTotalPaid = (member.total_paid || 0) + amount;
-      let newStatus = member.status;
-
-      if (newTotalPaid >= member.pledged_amount) {
-        newStatus = "completed";
-      } else if (member.status === "completed") {
-        newStatus = "active";
-      }
-
-      const memberRes = await API.put(`/members/${form.member_id}`, {
-        total_paid: newTotalPaid,
-        status: newStatus,
       });
 
-      const updatedMember = memberRes.data;
+      const newPayment = res.data;
 
-      // 3️⃣ Pass new payment and updated member back to parent
+      // ✅ Tell parent to update UI
       if (onSaved) {
-        onSaved(newPayment, updatedMember);
+        onSaved(newPayment);
       }
 
-      // 4️⃣ Close dialog and reset form
+      // ✅ Close dialog
       onOpenChange(false);
+
+      // ✅ Reset form
       setForm({
         member_id: "",
         amount: "",
@@ -98,9 +82,10 @@ export default function PaymentFormDialog({
         reference: "",
         notes: "",
       });
+
     } catch (error) {
       console.error("Error recording payment:", error);
-      alert("Failed to record payment. Please try again.");
+      alert("Failed to record payment.");
     } finally {
       setSaving(false);
     }
@@ -114,7 +99,8 @@ export default function PaymentFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Member Selection */}
+          
+          {/* Member */}
           <div>
             <Label>Member *</Label>
             <Select
@@ -134,25 +120,21 @@ export default function PaymentFormDialog({
             </Select>
           </div>
 
-          {/* Member Summary */}
+          {/* Summary */}
           {selectedMember && (
             <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Pledged:</span>
-                <span className="font-medium">
-                  KES {(selectedMember.pledged_amount || 0).toLocaleString()}
-                </span>
+                <span>Pledged:</span>
+                <span>KES {selectedMember.pledged_amount?.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Paid:</span>
-                <span className="font-medium">
-                  KES {(selectedMember.total_paid || 0).toLocaleString()}
-                </span>
+                <span>Paid:</span>
+                <span>KES {selectedMember.total_paid?.toLocaleString()}</span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>Remaining:</span>
                 <span>
-                  KES {((selectedMember.pledged_amount || 0) - (selectedMember.total_paid || 0)).toLocaleString()}
+                  KES {(selectedMember.pledged_amount - selectedMember.total_paid).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -162,17 +144,15 @@ export default function PaymentFormDialog({
           <div>
             <Label>Amount *</Label>
             <Input
-              required
               type="number"
-              min="0"
-              step="0.01"
               value={form.amount}
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
               placeholder="500"
+              required
             />
           </div>
 
-          {/* Payment Method */}
+          {/* Method */}
           <div>
             <Label>Payment Method</Label>
             <Select
@@ -198,7 +178,6 @@ export default function PaymentFormDialog({
             <Input
               value={form.reference}
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
-              placeholder="Receipt / M-Pesa code"
             />
           </div>
 
@@ -208,19 +187,12 @@ export default function PaymentFormDialog({
             <Textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={2}
-              placeholder="Optional notes..."
             />
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={saving}
-            >
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
 

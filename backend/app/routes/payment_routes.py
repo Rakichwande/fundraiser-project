@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from uuid import uuid4
 from datetime import datetime
 
 from app.database import SessionLocal
@@ -46,8 +47,9 @@ def create_payment(data: dict, db: Session = Depends(get_db)):
 
     amount = float(data.get("amount", 0))
 
-    # 🔹 Create payment
+    # 🔥 Create payment
     new_payment = Payment(
+        id=str(uuid4()),  # 🔥 IMPORTANT
         member_id=member.id,
         member_name=member.name,
         amount=amount,
@@ -59,7 +61,7 @@ def create_payment(data: dict, db: Session = Depends(get_db)):
 
     db.add(new_payment)
 
-    # 🔥 Update member totals (CRITICAL)
+    # 🔥 SINGLE SOURCE OF TRUTH
     member.total_paid += amount
 
     if member.total_paid >= member.pledged_amount:
@@ -74,7 +76,7 @@ def create_payment(data: dict, db: Session = Depends(get_db)):
 
 
 # =========================
-# DELETE PAYMENT (Optional but powerful)
+# DELETE PAYMENT
 # =========================
 @router.delete("/{payment_id}")
 def delete_payment(payment_id: str, db: Session = Depends(get_db)):
@@ -85,7 +87,7 @@ def delete_payment(payment_id: str, db: Session = Depends(get_db)):
 
     member = db.query(Member).filter(Member.id == payment.member_id).first()
 
-    # 🔥 Rollback member total
+    # 🔥 rollback totals
     if member:
         member.total_paid -= payment.amount
 

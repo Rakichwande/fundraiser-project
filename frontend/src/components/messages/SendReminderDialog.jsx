@@ -88,6 +88,7 @@ export default function SendReminderDialog({
       toast({
         title: "Reminders Sent",
         description: `Successfully sent ${selected.length} reminder(s).`,
+        duration: 7000,
       });
 
       onSent(newMessages); // update parent with new messages

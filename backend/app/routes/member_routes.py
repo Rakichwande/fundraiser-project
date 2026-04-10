@@ -1,20 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
-# 🔹 Database
 from app.database import SessionLocal
-
-# 🔹 Models & Schemas
-from app.models.member import Member as MemberModel
-from app.schemas.member_schema import MemberCreate
+from app.models.member import Member
 
 router = APIRouter()
 
 
-# =========================
-# DB SESSION DEPENDENCY
-# =========================
+# 🔹 DB Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -28,7 +22,7 @@ def get_db():
 # =========================
 @router.get("/")
 def get_members(db: Session = Depends(get_db)):
-    return db.query(MemberModel).all()
+    return db.query(Member).all()
 
 
 # =========================
@@ -36,7 +30,7 @@ def get_members(db: Session = Depends(get_db)):
 # =========================
 @router.get("/{member_id}")
 def get_member(member_id: str, db: Session = Depends(get_db)):
-    member = db.query(MemberModel).filter(MemberModel.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id).first()
 
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -48,15 +42,15 @@ def get_member(member_id: str, db: Session = Depends(get_db)):
 # CREATE MEMBER
 # =========================
 @router.post("/")
-def create_member(member: MemberCreate, db: Session = Depends(get_db)):
-    new_member = MemberModel(
-        id=str(uuid4()),
-        name=member.name,
-        phone_number=member.phone_number,
-        pledged_amount=member.pledged_amount,
+def create_member(data: dict, db: Session = Depends(get_db)):
+    new_member = Member(
+        id=str(uuid4()),  # 🔥 IMPORTANT
+        name=data.get("name"),
+        phone_number=data.get("phone_number"),
+        pledged_amount=data.get("pledged_amount", 0),
         total_paid=0,
         status="active",
-        notes=member.notes,
+        notes=data.get("notes", ""),
         last_contacted=None,
     )
 
@@ -72,12 +66,11 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
 # =========================
 @router.put("/{member_id}")
 def update_member(member_id: str, updates: dict, db: Session = Depends(get_db)):
-    member = db.query(MemberModel).filter(MemberModel.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id).first()
 
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    # 🔹 Update only provided fields
     for key, value in updates.items():
         setattr(member, key, value)
 
@@ -92,7 +85,7 @@ def update_member(member_id: str, updates: dict, db: Session = Depends(get_db)):
 # =========================
 @router.delete("/{member_id}")
 def delete_member(member_id: str, db: Session = Depends(get_db)):
-    member = db.query(MemberModel).filter(MemberModel.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id).first()
 
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -100,4 +93,4 @@ def delete_member(member_id: str, db: Session = Depends(get_db)):
     db.delete(member)
     db.commit()
 
-    return {"message": "Member deleted successfully"}
+    return {"message": "Member deleted"}
