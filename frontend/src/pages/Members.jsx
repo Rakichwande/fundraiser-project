@@ -31,7 +31,7 @@ export default function Members() {
     try {
       setLoading(true);
       const res = await API.get("/members");
-      setMembers(res.data);
+      setMembers(res.data || []);
     } catch (error) {
       console.error("Error loading members:", error);
     } finally {
@@ -42,6 +42,10 @@ export default function Members() {
   useEffect(() => {
     loadMembers();
   }, []);
+
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 300);
 
   // ✅ NEW: Handle create/update without re-fetch
   const handleMemberSaved = (member) => {
@@ -72,20 +76,20 @@ export default function Members() {
 
   // ✅ UPDATED: Delete without reload
   const handleDelete = async () => {
-    if (!deleteMember) return;
+  if (!deleteMember) return;
 
-    try {
-      await API.delete(`/members/${deleteMember.id}`);
+  try {
+    await API.delete(`/members/${deleteMember.id}`);
 
-      setMembers((prev) =>
-        prev.filter((m) => m.id !== deleteMember.id)
-      );
+    setMembers((prev) =>
+      prev.filter((m) => m.id !== deleteMember.id)
+    );
 
-      setDeleteMember(null);
-    } catch (error) {
-      console.error("Error deleting member:", error);
-    }
-  };
+    setDeleteMember(null);
+  } catch (error) {
+    console.error("Error deleting member:", error);
+  }
+};
 
   // 🔹 Export CSV
   const handleExport = () => {

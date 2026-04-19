@@ -20,7 +20,7 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
     notes: "",
   });
 
-  // 🔹 Load member data when editing
+  // 🔹 Load member data
   useEffect(() => {
     if (member) {
       setForm({
@@ -31,7 +31,6 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
         notes: member.notes || "",
       });
     } else {
-      // reset form when switching to "Add Member"
       setForm({
         name: "",
         phone_number: "",
@@ -42,6 +41,7 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
     }
   }, [member, open]);
 
+  // ✅ CLEAN SUBMIT FUNCTION
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -50,33 +50,30 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
 
     try {
       const data = {
-        ...form,
+        name: form.name,
+        phone_number: form.phone_number,
         pledged_amount: parseFloat(form.pledged_amount) || 0,
+        notes: form.notes || "",
       };
 
       let response;
 
       if (isEdit) {
-        // 🔹 UPDATE MEMBER
+        // UPDATE
         response = await API.put(`/members/${member.id}`, data);
       } else {
-        // 🔹 CREATE MEMBER
-        response = await API.post("/members", {
-          ...data,
-          total_paid: 0,
-        });
+        // CREATE
+        response = await API.post("/members", data);
       }
 
-      // ✅ Send actual saved member back to parent (NO re-fetch)
       if (onSaved) {
         onSaved(response.data);
       }
 
-      // ✅ Close dialog AFTER success
       onOpenChange(false);
 
     } catch (error) {
-      console.error("Error saving member:", error);
+      console.error("Error saving member:", error.response?.data || error);
     } finally {
       setSaving(false);
     }
@@ -129,7 +126,7 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
             />
           </div>
 
-          {/* Status */}
+          {/* Status (only useful for edit visually) */}
           <div>
             <Label>Status</Label>
             <Select

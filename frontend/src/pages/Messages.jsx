@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import SendReminderDialog from "../components/messages/SendReminderDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,18 +13,21 @@ export default function Messages() {
   const [search, setSearch] = useState("");
   const [showReminder, setShowReminder] = useState(false);
 
-  // 🔹 Load initial data
+  // 🔹 Load data (safe sequential loading)
   const loadData = async () => {
     try {
       setLoading(true);
-      const [msgRes, memberRes] = await Promise.all([
-        API.get("/messages"),
-        API.get("/members"),
-      ]);
-      setMessages(msgRes.data);
-      setMembers(memberRes.data);
+
+      const msgRes = await API.get("/messages");
+      setMessages(msgRes.data || []);
+
+      const memberRes = await API.get("/members");
+      setMembers(memberRes.data || []);
+
     } catch (error) {
       console.error("Error loading messages:", error);
+      setMessages([]);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -34,20 +37,30 @@ export default function Messages() {
     loadData();
   }, []);
 
-  // 🔹 Helper: Get member name
-  const getMemberName = (member_id) => {
-    const member = members.find((m) => m.id === member_id);
-    return member ? member.name : "Unknown";
-  };
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 300);
 
-  // 🔹 Filtered messages
-  const filtered = messages.filter((msg) => {
-    const memberName = getMemberName(msg.member_id).toLowerCase();
-    return (
-      memberName.includes(search.toLowerCase()) ||
-      msg.message_content?.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  // 🔹 Build fast lookup map (IMPORTANT PERFORMANCE FIX)
+  const memberMap = useMemo(() => {
+    const map = {};
+    members.forEach((m) => {
+      map[m.id] = m.name;
+    });
+    return map;
+  }, [members]);
+
+  // 🔹 Filtered messages (optimized)
+  const filtered = useMemo(() => {
+    return messages.filter((msg) => {
+      const memberName = (memberMap[msg.member_id] || "").toLowerCase();
+
+      return (
+        memberName.includes(search.toLowerCase()) ||
+        msg.message_content?.toLowerCase().includes(search.toLowerCase())
+      );
+    });
+  }, [messages, search, memberMap]);
 
   // 🔹 Status colors
   const statusColor = {
@@ -57,9 +70,9 @@ export default function Messages() {
     pending: "bg-yellow-100 text-yellow-700",
   };
 
-  // 🔹 Callback when reminder is sent
+  // 🔹 Reminder callback
   const handleReminderSent = (newMessages) => {
-    setMessages((prev) => [...prev, ...newMessages]);
+    setMessages((prev) => [...prev, ...(newMessages || [])]);
   };
 
   if (loading) {
@@ -72,6 +85,7 @@ export default function Messages() {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -116,15 +130,23 @@ export default function Messages() {
               className="bg-card rounded-xl border border-border p-4 hover:shadow-sm transition-shadow"
             >
               <div className="flex items-start justify-between gap-3">
+
                 <div className="flex items-start gap-3">
+
+                  {/* Avatar */}
                   <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">
-                    {getMemberName(msg.member_id)?.charAt(0)?.toUpperCase()}
+                    {(memberMap[msg.member_id] || "?")
+                      .charAt(0)
+                      .toUpperCase()}
                   </div>
 
+                  {/* Content */}
                   <div className="min-w-0">
+
                     <div className="flex items-center gap-2 flex-wrap">
+
                       <p className="text-sm font-medium">
-                        {getMemberName(msg.member_id)}
+                        {memberMap[msg.member_id] || "Unknown"}
                       </p>
 
                       <span
@@ -138,24 +160,27 @@ export default function Messages() {
                       <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground capitalize">
                         {msg.channel}
                       </span>
+
                     </div>
 
                     <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line line-clamp-3">
                       {msg.message_content}
                     </p>
+
                   </div>
                 </div>
 
                 <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                   {moment(msg.created_date).fromNow()}
                 </span>
+
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Send Reminder Dialog */}
+      {/* Dialog */}
       {showReminder && (
         <SendReminderDialog
           open={showReminder}

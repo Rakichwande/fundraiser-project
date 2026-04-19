@@ -46,28 +46,35 @@ export default function MemberDetail() {
 
   // 🔹 Load member, payments & messages
   const loadData = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const [memberRes, paymentRes, messageRes] = await Promise.all([
-        API.get(`/members/${id}`),
-        API.get(`/payments/member/${id}`),
-        API.get(`/messages/member/${id}`),
-      ]);
+    const memberRes = await API.get(`/members/${id}`);
+    setMember(memberRes.data);
 
-      setMember(memberRes.data);
-      setPayments(paymentRes.data);
-      setMessages(messageRes.data);
-    } catch (error) {
-      console.error("Error loading member detail:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const paymentRes = await API.get(`/payments/member/${id}`);
+    setPayments(paymentRes.data || []);
+
+    const messageRes = await API.get(`/messages/member/${id}`);
+    setMessages(messageRes.data || []);
+
+  } catch (error) {
+    console.error("Error loading member detail:", error);
+    setMember(null);
+    setPayments([]);
+    setMessages([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadData();
   }, [id]);
+
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 300);
 
   // 🔹 Handle updates locally without polling
   const handlePaymentSaved = (newPayment) => {

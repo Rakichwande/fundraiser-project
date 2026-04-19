@@ -23,26 +23,34 @@ export default function Payments() {
 
   // 🔹 Load Data (ONLY ONCE)
   const loadData = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const [pRes, mRes] = await Promise.all([
-        API.get("/payments"),
-        API.get("/members"),
-      ]);
+    const paymentsRes = await API.get("/payments");
+    setPayments(paymentsRes.data || []);
 
-      setPayments(pRes.data);
-      setMembers(mRes.data);
-    } catch (error) {
-      console.error("Error loading payments:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const membersRes = await API.get("/members");
+    setMembers(membersRes.data || []);
+
+  } catch (error) {
+    console.error("Payments load error:", error);
+    setPayments([]);
+    setMembers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
-    loadData();
-  }, []);
+  loadData();
+
+  // safety timeout (prevents forever loading UI)
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 300);
+
+  return () => clearTimeout(timer);
+}, []);
 
   // ✅ NEW: Handle payment save WITHOUT re-fetch
   const handlePaymentSaved = (payment) => {

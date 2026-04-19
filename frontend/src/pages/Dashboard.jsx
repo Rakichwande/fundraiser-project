@@ -10,27 +10,35 @@ export default function Dashboard() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async (isInitial = false) => {
-    try {
-      if (isInitial) setLoading(true);
+  const loadData = async () => {
+  try {
+    setLoading(true);
 
-      const [membersRes, paymentsRes] = await Promise.all([
-        API.get("/members"),
-        API.get("/payments"),
-      ]);
+    const membersRes = await API.get("/members");
+    setMembers(membersRes.data || []);
 
-      setMembers(membersRes.data || []);
-      setPayments(paymentsRes.data || []);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-    } finally {
-      if (isInitial) setLoading(false);
-    }
-  };
+    const paymentsRes = await API.get("/payments");
+    setPayments(paymentsRes.data || []);
+
+  } catch (error) {
+    console.error("Dashboard load error:", error);
+    setMembers([]);
+    setPayments([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
-    loadData(true);
-  }, []);
+  loadData();
+
+  // safety timeout (prevents forever loading UI)
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 300);
+
+  return () => clearTimeout(timer);
+}, []);
 
   if (loading) {
     return (

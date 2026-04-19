@@ -1,18 +1,9 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import uuid4
-from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from typing import Optional
-from app.database import engine
-from app.models import Base
-from app.database import engine
-from app.models import Base
-from sqlalchemy.orm import Session
-
-Base.metadata.create_all(bind=engine)
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Fundraiser Backend")
 
@@ -21,7 +12,7 @@ app = FastAPI(title="Fundraiser Backend")
 # =========================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -101,14 +92,7 @@ def create_member(member: Member):
         "last_contacted": None,
     }
 
-    @app.post("/members")
-    def create_member(member: MemberSchema, db: Session = Depends(get_db)): # type: ignore
-     new_member = Member(**member.dict())
-     db.add(new_member)
-     db.commit()
-     db.refresh(new_member)
-
-    return new_member
+    members_db.append(new_member)
     return new_member
 
 
@@ -144,7 +128,7 @@ def create_payment(payment: Payment):
     new_payment = {
         "id": str(uuid4()),
         **payment.dict(),
-        "created_date": datetime.now(timezone.utc).isoformat(),  
+        "created_date": datetime.now(timezone.utc).isoformat(),
     }
 
     payments_db.append(new_payment)
@@ -182,7 +166,7 @@ def create_message(message: Message):
     new_message = {
         "id": str(uuid4()),
         **message.dict(),
-        "created_date": message.created_date or datetime.now(timezone.utc).isoformat(),  # ✅ FIXED TIME
+        "created_date": message.created_date or datetime.now(timezone.utc).isoformat(),
     }
 
     messages_db.append(new_message)
