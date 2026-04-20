@@ -1,38 +1,67 @@
 import axios from "axios";
 
-// 🔹 Base URL (from .env for flexibility)
+// 🔹 Base API instance
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8001",
-  timeout: 10000, //  prevents infinite loading
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// 🔹 Request Interceptor (attach token later)
+
+// 🔹 REQUEST INTERCEPTOR (attach token + timing)
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token"); // future use
+    const token = localStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // ⏱ start timer
+    config.metadata = { startTime: new Date() };
+
+    console.log(
+      `➡️ REQUEST: ${config.method?.toUpperCase()} ${config.url}`
+    );
 
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// 🔹 Response Interceptor (global error handling)
+
+// 🔹 RESPONSE INTERCEPTOR (log success + timing)
 API.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const duration =
+      new Date() - response.config.metadata.startTime;
+
+    console.log(
+      `✅ RESPONSE: ${response.config.url} (${duration} ms)`
+    );
+
+    return response;
+  },
   (error) => {
+    const duration =
+      new Date() - error.config?.metadata?.startTime;
+
+    console.log(
+      `❌ FAILED: ${error.config?.url} (${duration} ms)`
+    );
+
     const status = error?.response?.status;
 
-    console.error("API ERROR:", error?.response || error.message);
+    console.error("API ERROR:", {
+      message: error.message,
+      status,
+      url: error?.config?.url,
+    });
 
     if (status === 401) {
-      console.warn("Unauthorized — login required");
+      console.warn("Unauthorized — redirect user");
     }
 
     if (status === 404) {
@@ -40,7 +69,14 @@ API.interceptors.response.use(
     }
 
     if (status === 500) {
-      console.error("Server error — check FastAPI backend");
+      console.error("Server error — check backend");
+    }
+
+    // 🔥 Retry once on timeout
+    if (error.code === "ECONNABORTED") {
+      console.warn("⏳ Timeout — retrying once...");
+
+      return API.request(error.config);
     }
 
     return Promise.reject(error);

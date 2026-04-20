@@ -41,7 +41,7 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
     }
   }, [member, open]);
 
-  // ✅ CLEAN SUBMIT FUNCTION
+  // 🔥 FIXED SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,31 +49,47 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
     setSaving(true);
 
     try {
-      const data = {
-        name: form.name,
-        phone_number: form.phone_number,
-        pledged_amount: parseFloat(form.pledged_amount) || 0,
-        notes: form.notes || "",
-      };
-
-      let response;
+      let payload;
 
       if (isEdit) {
-        // UPDATE
-        response = await API.put(`/members/${member.id}`, data);
-      } else {
-        // CREATE
-        response = await API.post("/members", data);
-      }
+        // ✅ UPDATE → include status
+        payload = {
+          name: form.name,
+          phone_number: form.phone_number,
+          pledged_amount: parseFloat(form.pledged_amount) || 0,
+          status: form.status,
+          notes: form.notes || "",
+        };
 
-      if (onSaved) {
-        onSaved(response.data);
+        const response = await API.put(`/members/${member.id}`, payload);
+
+        onSaved?.(response.data);
+
+      } else {
+        // ✅ CREATE → DO NOT send status (backend handles it)
+        payload = {
+          name: form.name,
+          phone_number: form.phone_number,
+          pledged_amount: parseFloat(form.pledged_amount) || 0,
+          notes: form.notes || "",
+        };
+
+        const response = await API.post("/members", payload);
+
+        onSaved?.(response.data);
       }
 
       onOpenChange(false);
 
     } catch (error) {
-      console.error("Error saving member:", error.response?.data || error);
+      console.error("❌ Error saving member:", error.response?.data || error);
+
+      // 🔥 VERY IMPORTANT (debug visibility)
+      alert(
+        error.response?.data?.detail ||
+        "Failed to save member. Check console."
+      );
+
     } finally {
       setSaving(false);
     }
@@ -89,7 +105,7 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
+
           {/* Name */}
           <div>
             <Label>Full Name *</Label>
@@ -126,23 +142,25 @@ export default function MemberFormDialog({ open, onOpenChange, member, onSaved }
             />
           </div>
 
-          {/* Status (only useful for edit visually) */}
-          <div>
-            <Label>Status</Label>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm({ ...form, status: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="defaulted">Defaulted</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Status (only meaningful in edit mode) */}
+          {isEdit && (
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm({ ...form, status: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="defaulted">Defaulted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Notes */}
           <div>

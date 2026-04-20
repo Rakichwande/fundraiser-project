@@ -33,6 +33,7 @@ class Member(BaseModel):
     name: str
     phone_number: str
     pledged_amount: float = 0
+    status: Optional[str] = "active"   
     notes: Optional[str] = ""
 
 
