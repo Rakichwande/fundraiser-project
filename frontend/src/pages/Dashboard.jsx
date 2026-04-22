@@ -11,34 +11,30 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const membersRes = await API.get("/members");
-    setMembers(membersRes.data || []);
+      // 🔥 FIX: run requests in parallel (faster + cleaner)
+      const [membersRes, paymentsRes] = await Promise.all([
+        API.get("/members"),
+        API.get("/payments"),
+      ]);
 
-    const paymentsRes = await API.get("/payments");
-    setPayments(paymentsRes.data || []);
+      setMembers(membersRes.data || []);
+      setPayments(paymentsRes.data || []);
 
-  } catch (error) {
-    console.error("Dashboard load error:", error);
-    setMembers([]);
-    setPayments([]);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error) {
+      console.error("Dashboard load error:", error);
+      setMembers([]);
+      setPayments([]);
+    } finally {
+      setLoading(false); // ✅ ONLY trust real completion
+    }
+  };
 
   useEffect(() => {
-  loadData();
-
-  // safety timeout (prevents forever loading UI)
-  const timer = setTimeout(() => {
-    setLoading(false);
-  }, 300);
-
-  return () => clearTimeout(timer);
-}, []);
+    loadData();
+  }, []);
 
   if (loading) {
     return (
