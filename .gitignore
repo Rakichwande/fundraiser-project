@@ -1,19 +1,18 @@
 # Node
 node_modules/
-dist/
-.vite/
+frontend/node_modules/
 
 # Python
 venv/
+backend/venv/
+
+# Build
+dist/
+frontend/dist/
+
+# Cache
+.vite/
 __pycache__/
-*.pyc
 
 # Env
 .env
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
